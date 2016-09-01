@@ -43,7 +43,7 @@ def set_breakpoint(view, address):
     func = view.get_function_at(view.platform, view.get_previous_function_start_before(address))
     if func:
         comment = func.get_comment_at(address)
-        func.set_comment(address, comment + " [breakpoint]")
+        func.set_comment(address, (comment.replace('[breakpoint]', '') + " [breakpoint]").strip())
 
 
 def delete_breakpoint(view, address):
@@ -81,7 +81,7 @@ def delete_breakpoint(view, address):
     func = view.get_function_at(view.platform, view.get_previous_function_start_before(address))
     if func:
         comment = func.get_comment_at(address)
-        func.set_comment(address, comment.replace(" [breakpoint]", ""))
+        func.set_comment(address, comment.replace('[breakpoint]', '').strip())
 
 
 PluginCommand.register_for_address("Set breakpoint", "", set_breakpoint)
