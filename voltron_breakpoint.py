@@ -7,10 +7,7 @@ debugger via Voltron's API.
 Install per instructions here:
 https://github.com/Vector35/binaryninja-api/tree/master/python/examples
 
-Once installed, right click on an instruction in the binary view to set a
-breakpoint in the debugger. Voltron's breakpoints view will update immediately
-to reflect the new breakpoint. A comment is added in Binary Ninja to show that
-there is a breakpoint at the selected address.
+Documentation here: https://github.com/snare/binja/blob/master/README.md
 """
 
 from binaryninja import *

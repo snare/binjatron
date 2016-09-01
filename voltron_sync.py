@@ -1,3 +1,15 @@
+"""
+voltron_sync.py
+
+A plugin for Binary Ninja to synchronise the currently selected instruction with
+the instruction pointer in a debugger via Voltron.
+
+Install per instructions here:
+https://github.com/Vector35/binaryninja-api/tree/master/python/examples
+
+Documentation here: https://github.com/snare/binja/blob/master/README.md
+"""
+
 from binaryninja import *
 import voltron
 from threading import Thread
