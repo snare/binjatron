@@ -2,7 +2,7 @@
 
 ## voltron_breakpoint.py
 
-Installs menu items `Set breakpoint` and `Delete breakpoint` for setting and deleting breakpoints in [Binary Ninja](http://binary.ninja) via the [Voltron](https://github.com/snare/voltron) API. Currently supports GDB and LLDB.
+Installs menu items `Set breakpoint` and `Delete breakpoint` for setting and deleting breakpoints in GDB or LLDB from [Binary Ninja](http://binary.ninja) via the [Voltron](https://github.com/snare/voltron) API.
 
 Right clicking on an instruction in the binary view and selecting `Set breakpoint` will set a new breakpoint in the debugger.
 
