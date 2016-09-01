@@ -57,3 +57,7 @@ Then when the debugger is issued the `continue` command and stops at the new bre
 The Binary Ninja selection will again be updated:
 
 ![continue_binja](http://i.imgur.com/R7jegjW.png)
+
+You can stop synchronising the display with Voltron with the `Stop syncing with Voltron` menu item:
+
+![stop](http://i.imgur.com/waPoB1J.png)
