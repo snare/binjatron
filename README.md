@@ -26,6 +26,8 @@ And the comment will be removed:
 
 ## voltron_sync.py
 
+**Note: this plugin requires the current version of [Voltron](https://github.com/snare/voltron) from GitHub. It won't work with v0.1.6 from PyPI.**
+
 Installs menu items `Sync with Voltron` and `Stop syncing with Voltron` for synchronising the currently selected instruction with the instruction pointer in a debugger using [Voltron](https://github.com/snare/voltron).
 
 Right clicking anywhere in the binary view and selecting `Sync with Voltron` will start the Voltron client in a background thread within Binary Ninja to watch Voltron for updates:

@@ -8,6 +8,9 @@ Install per instructions here:
 https://github.com/Vector35/binaryninja-api/tree/master/python/examples
 
 Documentation here: https://github.com/snare/binja/blob/master/README.md
+
+Note: requires the current version of Voltron from GitHub here:
+https://github.com/snare/voltron
 """
 
 from binaryninja import *
