@@ -43,10 +43,10 @@ def set_breakpoint(view, address):
     res = client.perform_request("command", command="voltron update", block=False)
 
     # add a comment in binja
-    # should probably try to preserve existing comments here but cbf right now
     func = view.get_function_at(view.platform, view.get_previous_function_start_before(address))
     if func:
-        func.set_comment(address, "breakpoint")
+        comment = func.get_comment_at(address)
+        func.set_comment(address, comment + " [breakpoint]")
 
 
 def delete_breakpoint(view, address):
@@ -83,7 +83,8 @@ def delete_breakpoint(view, address):
     # remove the breakpoint comment in binja
     func = view.get_function_at(view.platform, view.get_previous_function_start_before(address))
     if func:
-        func.set_comment(address, "")
+        comment = func.get_comment_at(address)
+        func.set_comment(address, comment.replace(" [breakpoint]", ""))
 
 
 PluginCommand.register_for_address("Set breakpoint", "", set_breakpoint)
