@@ -34,7 +34,7 @@ If you then step the debugger, the next instruction will be selected in Binary N
 
 ![next_selected](http://i.imgur.com/j8kY6i0.png)
 
-Setting a breakpoint using the `voltron_breakpoint.py` plugin included here will also work:
+Setting a breakpoint using plugin will also work:
 
 ![break_binja](http://i.imgur.com/QDWIzOY.png)
 
@@ -53,7 +53,7 @@ You can stop synchronising the display with Voltron with the `Stop syncing with 
 
 ## Setting and deleting breakpoints
 
-This plugin installs the menu items `Set breakpoint` and `Delete breakpoint` for setting and deleting breakpoints in GDB or LLDB from [Binary Ninja](http://binary.ninja) via the [Voltron](https://github.com/snare/voltron) API.
+This plugin also installs the menu items `Set breakpoint` and `Delete breakpoint` for setting and deleting breakpoints in GDB or LLDB from [Binary Ninja](http://binary.ninja) via the [Voltron](https://github.com/snare/voltron) API.
 
 Right clicking on an instruction in the binary view and selecting `Set breakpoint` will set a new breakpoint in the debugger:
 
