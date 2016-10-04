@@ -5,10 +5,8 @@ Binary Ninja plugin for [Voltron](https://github.com/snare/voltron) integration.
 Features:
 
 - Synchronise the selected instruction in Binary Ninja with the instruction pointer in the debugger
-- Mark breakpoints that are set in the debugger in Binary Ninja 
+- Mark breakpoints that are set in the debugger in Binary Ninja
 - Set and delete breakpoints in the debugger from Binary Ninja
-
-**Note: this plugin requires the current version of [Voltron](https://github.com/snare/voltron) from GitHub. It won't work with v0.1.6 from PyPI.**
 
 ## Installation
 

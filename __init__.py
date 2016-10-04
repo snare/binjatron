@@ -39,8 +39,6 @@ def sync(view):
 
         if error:
             log_error("Error synchronising: {}".format(error))
-            log_alert("Lost connection to Voltron")
-            stop()
         else:
             if client and len(results):
                 if results[0].registers:
