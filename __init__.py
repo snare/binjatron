@@ -94,13 +94,23 @@ def sync(view):
         log_alert("Already synchronising with Voltron")
 
 
-def stop(*args):
-    global syncing, client
+def stop(view):
+    global syncing, client, here
 
     if syncing:
         log_info("Stopping synchronisation with Voltron")
+
+        # clear any colours we've set
+        func = view.get_function_at(view.platform, view.get_previous_function_start_before(last_pc_addr))
+        func.set_user_instr_highlight(func.arch, last_pc_addr, last_pc_addr_colour)
+        for addr in last_bp_addrs:
+            func = view.get_function_at(view.platform, view.get_previous_function_start_before(addr))
+            func.set_user_instr_highlight(func.arch, addr, 0)
+
+        # stop the voltron client
         client.stop()
         client = Client()
+
         syncing = False
     else:
         log_alert("Not synchronising with Voltron")
