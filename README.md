@@ -26,9 +26,7 @@ Binjatron installs menu items `Sync with Voltron` and `Stop syncing with Voltron
 
 Right clicking anywhere in the binary view and selecting `Sync with Voltron` will start the Voltron client in a background thread within Binary Ninja to watch Voltron for updates.
 
-If you set a breakpoint in your inferior (here using the test inferior included with Voltron loaded in both Binary Ninja and LLDB, with a breakpoint set at `main` in LLDB) and run it, when the debugger stops at the breakpoint the address at which the breakpoint is set will be selected in Binary Ninja.
-
-The current instruction pointer in the debugger will also be highlighted in BN (in red by default). When the debugger is stepped, or continued and another breakpoint is hit, the instruction at the new instruction pointer will be highlighted.
+The current instruction pointer in the debugger will be highlighted in BN (in red by default). When the debugger is stepped, or continued and another breakpoint is hit, the highlighted instruction will be updated.
 
 ![binjatron](http://i.imgur.com/NQuKhfD.png)
 
