@@ -17,12 +17,18 @@ import voltron
 from threading import Thread
 from voltron.core import Client
 from voltron.plugin import api_request
+from scruffy import ConfigFile, PackageFile
 
 log = voltron.setup_logging()
 client = Client()
-last_addrs = []
+last_bp_addrs = []
+last_pc_addr = 0
+last_pc_addr_colour = 0
 syncing = False
 vers = None
+
+config = ConfigFile('~/.binjatron.conf', defaults=PackageFile('defaults.yaml'), apply_env=True, env_prefix='BTRON')
+config.load()
 
 
 def sync(view):
@@ -35,34 +41,46 @@ def sync(view):
         ]
 
     def callback(results=[], error=None):
-        global last_addrs
+        global last_bp_addrs, last_pc_addr, last_pc_addr_colour
 
         if error:
             log_error("Error synchronising: {}".format(error))
         else:
             if client and len(results):
-                if results[0].registers:
-                    view.file.navigate(view.file.view, results[0].registers.values()[0])
-
                 if results[1].breakpoints:
                     addrs = [l['address'] for s in [bp['locations'] for bp in results[1].breakpoints] for l in s]
 
-                    # add comments to all the breakpoints currently set in the debugger
+                    # add colours to all the breakpoints currently set in the debugger
                     for addr in addrs:
                         func = view.get_function_at(view.platform, view.get_previous_function_start_before(addr))
                         if func:
-                            comment = func.get_comment_at(addr)
-                            func.set_comment(addr, (comment.replace('[breakpoint]', '') + " [breakpoint]").strip())
+                            func.set_user_instr_highlight(func.arch, addr, config.bp_colour)
 
-                    # remove comments from any addresses that had breakpoints the last time we updated, but don't now
-                    for addr in set(last_addrs) - set(addrs):
+                    # remove colours from any addresses that had breakpoints the last time we updated, but don't now
+                    for addr in set(last_bp_addrs) - set(addrs):
                         func = view.get_function_at(view.platform, view.get_previous_function_start_before(addr))
                         if func:
-                            comment = func.get_comment_at(addr)
-                            func.set_comment(addr, comment.replace('[breakpoint]', '').strip())
+                            func.set_user_instr_highlight(func.arch, addr, 0)
 
                     # save this set of breakpoint addresses for next time
-                    last_addrs = addrs
+                    last_bp_addrs = addrs
+
+                if results[0].registers:
+                    # get the current PC from the debugger
+                    addr = results[0].registers.values()[0]
+
+                    # find the function where that address is
+                    func = view.get_function_at(view.platform, view.get_previous_function_start_before(addr))
+
+                    # update the highlight colour of the previous PC to its saved value
+                    func.set_user_instr_highlight(func.arch, last_pc_addr, last_pc_addr_colour)
+
+                    # save the PC and current colour for that instruction
+                    last_pc_addr_colour = func.get_instr_highlight(func.arch, addr).color
+                    last_pc_addr = addr
+
+                    # update the highlight colour to show the current PC
+                    func.set_user_instr_highlight(func.arch, addr, config.pc_colour)
 
     if not syncing:
         try:
@@ -111,11 +129,10 @@ def set_breakpoint(view, address):
         # update the voltron views
         res = client.perform_request("command", command="voltron update", block=False)
 
-        # add a comment in binja
+        # add colour in binja
         func = view.get_function_at(view.platform, view.get_previous_function_start_before(address))
         if func:
-            comment = func.get_comment_at(address)
-            func.set_comment(address, (comment.replace('[breakpoint]', '') + " [breakpoint]").strip())
+            func.set_user_instr_highlight(func.arch, address, config.bp_colour)
     except:
         log_alert("Failed to set breakpoint")
 
@@ -153,11 +170,10 @@ def delete_breakpoint(view, address):
         # update the voltron views
         res = client.perform_request("command", command="voltron update", block=False)
 
-        # remove the breakpoint comment in binja
+        # remove the breakpoint colour in binja
         func = view.get_function_at(view.platform, view.get_previous_function_start_before(address))
         if func:
-            comment = func.get_comment_at(address)
-            func.set_comment(address, comment.replace('[breakpoint]', '').strip())
+            func.set_user_instr_highlight(func.arch, address, 0)
     except:
         log_alert("Failed to delete breakpoint")
 

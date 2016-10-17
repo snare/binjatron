@@ -10,66 +10,35 @@ Features:
 
 ## Installation
 
-Install per the instructions on the [Binary Ninja API repo](https://github.com/Vector35/binaryninja-api/tree/master/python/examples).
+Binjatron requires [Voltron](https://github.com/snare/voltron), which is a framework to talk to various debuggers (GDB, LLDB, WinDbg and VDB) and build common UI views for them. Firstly, Voltron must be installed and working with your debugger of choice. An install script is provided that covers most use cases for GDB/LLDB on macOS and Linux, and [manual installation instructions](https://github.com/snare/voltron/wiki/Installation) are provided for other cases.
 
-## Synchronisation
+Voltron must also be installed into the same Python version that Binary Ninja is using, which will depend on which platform you are on. This may or may not be the same Python version that your debugger is using. On macOS, for example, BN uses the system's default version of Python 2.7, and so does LLDB, so installing using Voltron's `install.sh` is sufficient. There's more information [here](https://github.com/snare/voltron/wiki/Installation) that may be useful in determining into which Python version you should be installing Voltron. 
 
-This plugin installs menu items `Sync with Voltron` and `Stop syncing with Voltron` for synchronising the currently selected instruction with the instruction pointer in a debugger using [Voltron](https://github.com/snare/voltron). It also synchronises breakpoints, and marks any instructions that have breakpoints set in the debugger with a comment.
+Windows/WinDbg users will need to follow the [manual install instructions](https://github.com/snare/voltron/wiki/Installation) to install Voltron and get it working with WinDbg. They'll also need to install Voltron into BN's embedded Python installation.
 
-Right clicking anywhere in the binary view and selecting `Sync with Voltron` will start the Voltron client in a background thread within Binary Ninja to watch Voltron for updates:
+Once Voltron is installed, install the Binjatron plugin per the instructions on the [Binary Ninja API repo](https://github.com/Vector35/binaryninja-api/tree/master/python/examples).
 
-![sync](http://i.imgur.com/DjGcgqz.png)
+If you're having issues getting it working, please open an [issue on GitHub](https://github.com/snare/binjatron).
 
-If you set a breakpoint in your inferior (here using the test inferior included with Voltron loaded in both Binary Ninja and LLDB, with a breakpoint set at `main` in LLDB) and run it, when the debugger stops at the breakpoint the address at which the breakpoint is set will be selected in Binary Ninja:
+## Usage
 
-![run](http://i.imgur.com/Bhx4Evx.png)
+Binjatron installs menu items `Sync with Voltron` and `Stop syncing with Voltron` for synchronising the currently selected instruction with the instruction pointer in a debugger using [Voltron](https://github.com/snare/voltron). It also synchronises breakpoints, and marks any instructions that have breakpoints set in the debugger by highlighting them.
 
-![main_selected](http://i.imgur.com/JZpUNK6.png)
+Right clicking anywhere in the binary view and selecting `Sync with Voltron` will start the Voltron client in a background thread within Binary Ninja to watch Voltron for updates.
 
-If you then step the debugger, the next instruction will be selected in Binary Ninja:
+If you set a breakpoint in your inferior (here using the test inferior included with Voltron loaded in both Binary Ninja and LLDB, with a breakpoint set at `main` in LLDB) and run it, when the debugger stops at the breakpoint the address at which the breakpoint is set will be selected in Binary Ninja.
 
-![step](http://i.imgur.com/Py1Smmn.png)
+The current instruction pointer in the debugger will also be highlighted in BN (in red by default). When the debugger is stepped, or continued and another breakpoint is hit, the instruction at the new instruction pointer will be highlighted.
 
-![next_selected](http://i.imgur.com/j8kY6i0.png)
+![binjatron](http://i.imgur.com/NQuKhfD.png)
 
-Setting a breakpoint using plugin will also work:
+This plugin also installs the menu items `Set breakpoint` and `Delete breakpoint` for setting and deleting breakpoints in GDB or LLDB from within BN. Right clicking on an instruction in the binary view and selecting `Set breakpoint` will set a new breakpoint in the debugger, and right-clicking an instruction where a breakpoint has been set and selecting `Delete breakpoint` will delete the breakpoint in the debugger.
 
-![break_binja](http://i.imgur.com/QDWIzOY.png)
+## Configuration
 
-Then when the debugger is issued the `continue` command and stops at the new breakpoint:
+The only configuration for Binjatron is the colours used to highlight the instruction pointer and breakpoints. These colours can be set by creating a configuration file at `~/.binjatron.conf` containing something like this:
 
-![continue](http://i.imgur.com/epX9pxD.png)
+    bp_colour: 1
+    pc_colour: 4
 
-The Binary Ninja selection will again be updated:
-
-![continue_binja](http://i.imgur.com/R7jegjW.png)
-
-You can stop synchronising the display with Voltron with the `Stop syncing with Voltron` menu item:
-
-![stop](http://i.imgur.com/waPoB1J.png)
-
-
-## Setting and deleting breakpoints
-
-This plugin also installs the menu items `Set breakpoint` and `Delete breakpoint` for setting and deleting breakpoints in GDB or LLDB from [Binary Ninja](http://binary.ninja) via the [Voltron](https://github.com/snare/voltron) API.
-
-Right clicking on an instruction in the binary view and selecting `Set breakpoint` will set a new breakpoint in the debugger:
-
-![set_breakpoint](http://i.imgur.com/HzxStvG.png)
-
-The Voltron breakpoints view will update to show the new breakpoint:
-
-![bp_view](http://i.imgur.com/ITHf4zU.png)
-
-And a comment will be added in Binary Ninja to indicate that there is a breakpoint set at this address:
-
-![comment_added](http://i.imgur.com/ASI5gt5.png)
-
-Right clicking on an instruction in the binary view where a breakpoint has been set and selecting `Delete breakpoint` will remove the breakpoint in the debugger:
-
-![delete_breakpoint](http://i.imgur.com/Znqx2Lx.png)
-
-And the comment will be removed:
-
-![comment_removed](http://i.imgur.com/omXqgd9.png)
-
+The numbers there refer to the indices into the `Highlight instruction` submenu in BN (right click an instruction to see it).
