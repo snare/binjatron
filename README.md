@@ -34,6 +34,30 @@ The current instruction pointer in the debugger will also be highlighted in BN (
 
 This plugin also installs the menu items `Set breakpoint` and `Delete breakpoint` for setting and deleting breakpoints in GDB or LLDB from within BN. Right clicking on an instruction in the binary view and selecting `Set breakpoint` will set a new breakpoint in the debugger, and right-clicking an instruction where a breakpoint has been set and selecting `Delete breakpoint` will delete the breakpoint in the debugger.
 
+### ASLR support
+
+Binjatron works by highlighting instructions in BN at the instruction pointer and breakpoint addresses from the debugger. Generally when you load a binary into a debugger, ASLR will be disabled, which means that the addresses in the debugger will match those that Binary Ninja knows about. If, for some reason, you need ASLR enabled (e.g. the author does a lot of work attached to live macOS kernels with VMware, which have ASLR enabled), this is a problem because the addresses that the debugger knows about are slid by a random value and will not match those in the copy of the kernel loaded in Binary Ninja.
+
+To work around this, Binjatron provides the ability to set a slide value with the `Set slide from instruction` menu item.
+
+To use this feature, load up your binary in both the debugger and BN and start syncing with Voltron. Now identify the instruction at which the instruction pointer in the debugger is pointing. Right click this instruction, and select `Set slide from instruction`. Binjatron will examine the current instruction pointer in the debugger, and the address at which the selected instruction exists, and calculate the ASLR slide.
+
+Here we can tell which instruction it is because we've set a breakpoint in the debugger:
+
+![set_slide](http://i.imgur.com/UPYSD6Y.png)
+
+Now that the slide has been updated, the current instruction pointer is reflected properly in BN:
+
+![with_slide](http://i.imgur.com/kcnBN8i.png)
+
+**Note:** ASLR support probably only works with LLDB as a back end debugger for now. The code should support GDB, but with some caveats (you will have to have at least run the inferior and hit a breakpoint before you can set the slide, and it won't update the display properly until the next time you step because of limitations with GDB's API). This has not been tested and will not be tested until snare gets around to running BN on Linux, as GDB on macOS doesn't seem to support disabling ASLR.
+
+## Caveats
+
+Setting and deleting breakpoints from Binjatron currently only works with GDB and LLDB. I'll add WinDbg support soon.
+
+ASLR support only works with LLDB.
+
 ## Configuration
 
 The only configuration for Binjatron is the colours used to highlight the instruction pointer and breakpoints. These colours can be set by creating a configuration file at `~/.binjatron.conf` containing something like this:

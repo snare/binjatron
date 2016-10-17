@@ -26,13 +26,14 @@ last_pc_addr = 0
 last_pc_addr_colour = 0
 syncing = False
 vers = None
+slide = 0
 
 config = ConfigFile('~/.binjatron.conf', defaults=PackageFile('defaults.yaml'), apply_env=True, env_prefix='BTRON')
 config.load()
 
 
 def sync(view):
-    global syncing
+    global syncing, vers
 
     def build_requests():
         return [
@@ -48,7 +49,7 @@ def sync(view):
         else:
             if client and len(results):
                 if results[1].breakpoints:
-                    addrs = [l['address'] for s in [bp['locations'] for bp in results[1].breakpoints] for l in s]
+                    addrs = [l['address'] - slide for s in [bp['locations'] for bp in results[1].breakpoints] for l in s]
 
                     # add colours to all the breakpoints currently set in the debugger
                     for addr in addrs:
@@ -67,7 +68,7 @@ def sync(view):
 
                 if results[0].registers:
                     # get the current PC from the debugger
-                    addr = results[0].registers.values()[0]
+                    addr = results[0].registers.values()[0] - slide
 
                     # find the function where that address is
                     func = view.get_function_at(view.platform, view.get_previous_function_start_before(addr))
@@ -95,7 +96,7 @@ def sync(view):
 
 
 def stop(view):
-    global syncing, client, here
+    global syncing, client, slide
 
     if syncing:
         log_info("Stopping synchronisation with Voltron")
@@ -112,6 +113,7 @@ def stop(view):
         client = Client()
 
         syncing = False
+        slide = 0
     else:
         log_alert("Not synchronising with Voltron")
 
@@ -125,9 +127,9 @@ def set_breakpoint(view, address):
 
         # build a breakpoint set command for the debugger
         if 'lldb' in vers.host_version:
-            cmd = "breakpoint set -a 0x{:x}".format(address)
+            cmd = "breakpoint set -a 0x{:x}".format(address + slide)
         elif 'gdb' in vers.host_version:
-            cmd = "break *0x{:x}".format(address)
+            cmd = "break *0x{:x}".format(address + slide)
         else:
             raise Exception("Debugger host version {} not supported".format(vers.host_version))
 
@@ -160,7 +162,7 @@ def delete_breakpoint(view, address):
         if res.is_success:
             for bp in res.breakpoints:
                 for location in bp['locations']:
-                    if address == location['address']:
+                    if address == location['address'] - slide:
                         bp_id = bp['id']
                         break
 
@@ -188,7 +190,35 @@ def delete_breakpoint(view, address):
         log_alert("Failed to delete breakpoint")
 
 
+def set_slide(view, address):
+    global slide
+
+    if 'async' in vers.capabilities:
+        # if we're using a debugger that supports async, grab the current PC
+        res = client.perform_request("registers", registers=["pc"], block=False)
+        pc = res.registers.values()[0]
+    else:
+        # otherwise we just have to use the last PC we saved
+        if last_pc_addr == 0:
+            log_alert("Your debugger does not support async API access, and Binary Ninja hasn't received any data from it yet. Please run the `voltron update` command in the debugger, or step the debugger, or let it run until it hits a breakpoint so Binjatron can get the register state.")
+        else:
+            pc = last_pc_addr
+
+    slide = pc - address
+
+    # if we have an async debugger, we can update now. otherwise we'll have to wait for the user to step again
+    if 'async' in vers.capabilities:
+        client.update()
+
+
+def clear_slide(view):
+    global slide
+    slide = 0
+
+
 PluginCommand.register("Sync with Voltron", "", sync)
 PluginCommand.register("Stop syncing with Voltron", "", stop)
 PluginCommand.register_for_address("Set breakpoint", "", set_breakpoint)
 PluginCommand.register_for_address("Delete breakpoint", "", delete_breakpoint)
+PluginCommand.register_for_address("Set slide from instruction", "", set_slide)
+PluginCommand.register("Clear slide", "", clear_slide)
