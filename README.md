@@ -4,17 +4,20 @@ Binary Ninja plugin for [Voltron](https://github.com/snare/voltron) integration.
 
 Features:
 
-- Synchronise the selected instruction in Binary Ninja with the instruction pointer in the debugger
+- Mark the current instruction pointer in the debugger in Binary Ninja
 - Mark breakpoints that are set in the debugger in Binary Ninja
 - Set and delete breakpoints in the debugger from Binary Ninja
+- Synchronise code updates made in Binary Ninja with the debugger
 
 Support:
 
-- Everything works in LLDB
+- Everything works in LLDB (except writing memory right now)
 - Some features may not work properly in GDB
 - Some features may work in WinDbg and VDB but haven't been tested at all
 
 ## Installation
+
+**Note: snare has been adding features to Voltron to support Binjatron, and sometimes these features have not made a release yet, so please use the latest version of [Voltron](https://github.com/snare/voltron) from GitHub.**
 
 Binjatron requires [Voltron](https://github.com/snare/voltron), which is a framework to talk to various debuggers (GDB, LLDB, WinDbg and VDB) and build common UI views for them. Firstly, Voltron must be installed and working with your debugger of choice. An install script is provided that covers most use cases for GDB/LLDB on macOS and Linux, and [manual installation instructions](https://github.com/snare/voltron/wiki/Installation) are provided for other cases.
 
@@ -28,13 +31,19 @@ If you're having issues getting it working, please open an [issue on GitHub](htt
 
 ## Usage
 
-Binjatron installs menu items `Sync with Voltron` and `Stop syncing with Voltron` for synchronising the currently selected instruction with the instruction pointer in a debugger using [Voltron](https://github.com/snare/voltron). It also synchronises breakpoints, and marks any instructions that have breakpoints set in the debugger by highlighting them.
+Binjatron installs menu items `Voltron: Sync` and `Voltron: Stop syncing` for synchronising data from the debugger with Binary Ninja.
 
 Right clicking anywhere in the binary view and selecting `Sync with Voltron` will start the Voltron client in a background thread within Binary Ninja to watch Voltron for updates.
 
 The current instruction pointer in the debugger will be highlighted in BN (in red by default). When the debugger is stepped, or continued and another breakpoint is hit, the highlighted instruction will be updated. Any breakpoints set in the debugger will be highlighted (in blue by default).
 
 ![binjatron](http://i.imgur.com/NQuKhfD.png)
+
+When code is patched in Binary Ninja, the new code will be sent to Voltron and written to the same address in the inferior's memory (this only works with GDB as the backend so far):
+
+![pre_edit](http://i.imgur.com/IxGqOa4.png)
+
+![post_edit](http://i.imgur.com/AjLbqQK.png)
 
 This plugin also installs the menu items `Set breakpoint` and `Delete breakpoint` for setting and deleting breakpoints in GDB or LLDB from within BN. Right clicking on an instruction in the binary view and selecting `Set breakpoint` will set a new breakpoint in the debugger, and right-clicking an instruction where a breakpoint has been set and selecting `Delete breakpoint` will delete the breakpoint in the debugger.
 

@@ -27,13 +27,14 @@ last_pc_addr_colour = 0
 syncing = False
 vers = None
 slide = 0
+notification = None
 
 config = ConfigFile('~/.binjatron.conf', defaults=PackageFile('defaults.yaml'), apply_env=True, env_prefix='BTRON')
 config.load()
 
 
 def sync(view):
-    global syncing, vers
+    global syncing, vers, notification
 
     def build_requests():
         return [
@@ -86,6 +87,12 @@ def sync(view):
     if not syncing:
         try:
             log_info("Starting synchronisation with Voltron")
+
+            # register for notifications
+            notification = BinjatronNotification(view)
+            view.register_notification(notification)
+
+            # Start the client
             vers = client.perform_request("version")
             client.start(build_requests=build_requests, callback=callback)
             syncing = True
@@ -96,7 +103,7 @@ def sync(view):
 
 
 def stop(view):
-    global syncing, client, slide
+    global syncing, client, slide, notification
 
     if syncing:
         log_info("Stopping synchronisation with Voltron")
@@ -111,6 +118,10 @@ def stop(view):
         # stop the voltron client
         client.stop()
         client = Client()
+
+        # unregister notifications
+        view.unregister_notification(notification)
+        notification = None
 
         syncing = False
         slide = 0
@@ -216,9 +227,34 @@ def clear_slide(view):
     slide = 0
 
 
-PluginCommand.register("Sync with Voltron", "", sync)
-PluginCommand.register("Stop syncing with Voltron", "", stop)
-PluginCommand.register_for_address("Set breakpoint", "", set_breakpoint)
-PluginCommand.register_for_address("Delete breakpoint", "", delete_breakpoint)
-PluginCommand.register_for_address("Set slide from instruction", "", set_slide)
-PluginCommand.register("Clear slide", "", clear_slide)
+class BinjatronNotification(BinaryDataNotification):
+    def __init__(self, view):
+        self.view = view
+
+    def data_written(self, view, offset, length):
+        log_info("data_written({:x}, {})".format(offset, length))
+
+        # get the data that was written
+        data = view.read(offset, length)
+
+        # write it to memory in the debugger
+        res = client.perform_request("write_memory", address=offset + slide, value=data, block=False)
+        if not res.is_success:
+            log_error("Failed to write memory in debugger: {}".format(res))
+
+        # update the voltron views
+        res = client.perform_request("command", command="voltron update", block=False)
+
+    def data_inserted(self, view, offset, length):
+        log_info("data_inserted()")
+
+    def data_removed(self, view, offset, length):
+        log_info("data_removed()")
+
+
+PluginCommand.register("Voltron: Sync", "", sync)
+PluginCommand.register("Voltron: Stop syncing", "", stop)
+PluginCommand.register_for_address("Voltron: Breakpoint set", "", set_breakpoint)
+PluginCommand.register_for_address("Voltron: Breakpoint clear", "", delete_breakpoint)
+PluginCommand.register_for_address("Voltron: Slide set", "", set_slide)
+PluginCommand.register("Voltron: Slide clear", "", clear_slide)
