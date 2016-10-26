@@ -69,7 +69,9 @@ Now that the slide has been updated, the current instruction pointer is reflecte
 
 Setting and deleting breakpoints from Binjatron currently only works with GDB and LLDB. I'll add WinDbg support soon.
 
-ASLR support only works with LLDB.
+ASLR support only works with LLDB for now.
+
+Code updating only works in GDB for now.
 
 ## Configuration
 
