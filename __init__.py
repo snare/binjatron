@@ -85,7 +85,7 @@ def sync(view):
 
                     if last_pc_addr:
                         # update the highlight colour of the previous PC to its saved value
-                        func.set_auto_instr_highlight(last_pc_addr, last_pc_addr_colour)
+                        _get_function(view, last_pc_addr).set_auto_instr_highlight(last_pc_addr, last_pc_addr_colour)
 
                     # save the PC and current colour for that instruction
                     last_pc_addr_colour = func.get_instr_highlight(addr)
