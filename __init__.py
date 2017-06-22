@@ -18,6 +18,7 @@ from threading import Thread
 from voltron.core import Client
 from voltron.plugin import api_request
 from scruffy import ConfigFile, PackageFile
+import sys
 
 log = voltron.setup_logging()
 client = Client()
@@ -106,10 +107,13 @@ def sync(view):
             vers = client.perform_request("version")
             client.start(build_requests=build_requests, callback=callback)
             syncing = True
+            return syncing
         except:
-            log_alert("Couldn't connect to Voltron")
+            log_info("Couldn't connect to Voltron")
+            return syncing
     else:
-        log_alert("Already synchronising with Voltron")
+        log_info("Already synchronising with Voltron")
+        return syncing
 
 
 def stop(view):
@@ -237,6 +241,33 @@ def set_slide(view, address):
 def clear_slide(view):
     global slide
     slide = 0
+
+def custom_request(request, args, alert=True):
+    global vers
+    client_result = None
+    try:
+        if not vers:
+            vers = client.perform_request("version")
+
+        if 'lldb' in vers.host_version or 'gdb' in vers.host_version:
+            cmd = request
+        else:
+            raise Exception("Debugger host version {} not supported".format(vers.host_version))
+
+        client_result = client.perform_request(request, **args)
+        if client_result.is_error:
+            raise Exception("\"" + cmd + "\": {}".format(client_result))
+
+        # update the voltron views
+        res = client.perform_request("command", command="voltron update", block=False)
+    except:
+        log_info(sys.exc_info()[1])
+        if alert:
+            log_alert(request + " failed: " + str(args))
+        else:
+            log_info(request + " failed: " + str(args))
+
+    return client_result
 
 
 class BinjatronNotification(BinaryDataNotification):
