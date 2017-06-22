@@ -55,17 +55,19 @@ def sync(view):
         ]
 
     def callback(results=[], error=None):
-        global last_bp_addrs, last_pc_addr, last_pc_addr_colour, sync_callbacks, mute_errors_after
+        global last_bp_addrs, last_pc_addr, last_pc_addr_colour, sync_callbacks, mute_errors_after, syncing
 
         if error:
             if mute_errors_after > 0:
                 log_error("Error synchronising: {}".format(error))
             elif mute_errors_after == 0:
                 log_alert("Voltron encountered three sync errors in a row. Muting errors until the next succesful sync.")
+                syncing = False
             mute_errors_after -= 1
         else:
             if(mute_errors_after < 0):
                 log_info("Sync restored after {} attempts".format(mute_errors_after * -1))
+                syncing = True
             mute_errors_after = 3
             if client and len(results):
                 if results[1].breakpoints:
@@ -85,6 +87,22 @@ def sync(view):
 
                     # save this set of breakpoint addresses for next time
                     last_bp_addrs = addrs
+
+                elif last_bp_addrs:
+                    replace_breakpoints = show_message_box(
+                        'New Session',
+                        'The Voltron instance currently syncing reports no breakpoints set, but breakpoints have been set in Binary Ninja. Restore these breakpoints?',
+                        buttons=enums.MessageBoxButtonSet.YesNoButtonSet)
+
+                    if replace_breakpoints:
+                        for addr in set(last_bp_addrs):
+                            set_breakpoint(view, addr)
+                    else:
+                        for addr in set(last_bp_addrs):
+                            func = _get_function(view, addr)
+                            if func:
+                                func.set_auto_instr_highlight(addr, no_colour)
+                        last_bp_addrs = []
 
                 if results[0].registers:
                     # get the current PC from the debugger
@@ -107,24 +125,12 @@ def sync(view):
                     for cb, _ in sync_callbacks:
                         cb(results)
                     sync_callbacks = filter(lambda cbt: not cbt[1], sync_callbacks)
-                if not results[0].registers and not results[1].breakpoints:
+
+                elif not results[1].breakpoints or (results[0].message == 'No such target'): # Clear the program counter highlight if the program isn't running
                     if last_pc_addr:
                         # update the highlight colour of the previous PC to its saved value
                         _get_function(view, last_pc_addr).set_auto_instr_highlight(last_pc_addr, last_pc_addr_colour)
 
-                    replace_breakpoints = show_message_box(
-                        'New Session',
-                        'The Voltron instance currently syncing reports no breakpoints set, but breakpoints have been set in Binary Ninja. Restore these breakpoints?',
-                        buttons=enums.MessageBoxButtonSet.YesNoButtonSet)
-
-                    if replace_breakpoints:
-                        for addr in set(last_bp_addrs):
-                            set_breakpoint(view, addr)
-                    else:
-                        for addr in set(last_bp_addrs):
-                            func = _get_function(view, addr)
-                            if func:
-                                func.set_auto_instr_highlight(addr, no_colour)
 
 
 
