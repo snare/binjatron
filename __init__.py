@@ -29,6 +29,7 @@ syncing = False
 vers = None
 slide = 0
 notification = None
+sync_callbacks = []
 
 config = ConfigFile('~/.binjatron.conf', defaults=PackageFile('defaults.yaml'), apply_env=True, env_prefix='BTRON')
 config.load()
@@ -53,7 +54,7 @@ def sync(view):
         ]
 
     def callback(results=[], error=None):
-        global last_bp_addrs, last_pc_addr, last_pc_addr_colour
+        global last_bp_addrs, last_pc_addr, last_pc_addr_colour, sync_callbacks
 
         if error:
             log_error("Error synchronising: {}".format(error))
@@ -94,6 +95,10 @@ def sync(view):
 
                     # update the highlight colour to show the current PC
                     func.set_auto_instr_highlight(addr, pc_colour)
+                    
+                    for cb, _ in sync_callbacks:
+                        cb(results)
+                    sync_callbacks = filter(lambda cbt: not cbt[1], sync_callbacks)
 
     if not syncing:
         try:
@@ -259,7 +264,7 @@ def custom_request(request, args, alert=True):
             raise Exception("\"" + cmd + "\": {}".format(client_result))
 
         # update the voltron views
-        res = client.perform_request("command", command="voltron update", block=False)
+        client.perform_request("command", command="voltron update", block=False)
     except:
         log_info(sys.exc_info()[1])
         if alert:
@@ -269,6 +274,9 @@ def custom_request(request, args, alert=True):
 
     return client_result
 
+def register_sync_callback(cb, should_delete=False):
+    global sync_callbacks
+    sync_callbacks.append((cb, should_delete))
 
 class BinjatronNotification(BinaryDataNotification):
     def __init__(self, view):
