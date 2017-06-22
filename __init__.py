@@ -30,6 +30,7 @@ vers = None
 slide = 0
 notification = None
 sync_callbacks = []
+mute_errors_after = 3
 
 config = ConfigFile('~/.binjatron.conf', defaults=PackageFile('defaults.yaml'), apply_env=True, env_prefix='BTRON')
 config.load()
@@ -54,11 +55,18 @@ def sync(view):
         ]
 
     def callback(results=[], error=None):
-        global last_bp_addrs, last_pc_addr, last_pc_addr_colour, sync_callbacks
+        global last_bp_addrs, last_pc_addr, last_pc_addr_colour, sync_callbacks, mute_errors_after
 
         if error:
-            log_error("Error synchronising: {}".format(error))
+            if mute_errors_after > 0:
+                log_error("Error synchronising: {}".format(error))
+            elif mute_errors_after == 0:
+                log_alert("Voltron encountered three sync errors in a row. Muting errors until the next succesful sync.")
+            mute_errors_after -= 1
         else:
+            if(mute_errors_after < 0):
+                log_info("Sync restored after {} attempts".format(mute_errors_after * -1))
+            mute_errors_after = 3
             if client and len(results):
                 if results[1].breakpoints:
                     addrs = [l['address'] - slide for s in [bp['locations'] for bp in results[1].breakpoints] for l in s]
@@ -95,7 +103,7 @@ def sync(view):
 
                     # update the highlight colour to show the current PC
                     func.set_auto_instr_highlight(addr, pc_colour)
-                    
+
                     for cb, _ in sync_callbacks:
                         cb(results)
                     sync_callbacks = filter(lambda cbt: not cbt[1], sync_callbacks)
@@ -112,14 +120,10 @@ def sync(view):
             vers = client.perform_request("version")
             client.start(build_requests=build_requests, callback=callback)
             syncing = True
-            # Return the sync state so that external code can determine whether voltron is currently syncing with binjatron
-            return syncing
         except:
             log_info("Couldn't connect to Voltron")
-            return syncing
     else:
         log_info("Already synchronising with Voltron")
-        return syncing
 
 
 def stop(view):
@@ -289,6 +293,10 @@ def register_sync_callback(cb, should_delete=False):
         the list after a single call. Defaults to False. """
     global sync_callbacks
     sync_callbacks.append((cb, should_delete))
+
+def sync_state():
+    """ Return the sync state so that external code can determine whether voltron is currently syncing with binjatron """
+    return syncing
 
 class BinjatronNotification(BinaryDataNotification):
     def __init__(self, view):
