@@ -61,6 +61,7 @@ def sync(view):
             if mute_errors_after > 0:
                 log_error("Error synchronising: {}".format(error))
             elif mute_errors_after == 0:
+                # Prevent errors from filling up the entire log if the debugger closes and we lose sync
                 log_alert("Voltron encountered three sync errors in a row. Muting errors until the next succesful sync.")
                 syncing = False
             mute_errors_after -= 1
@@ -89,6 +90,7 @@ def sync(view):
                     last_bp_addrs = addrs
 
                 elif last_bp_addrs:
+                    # We end up here if the debugger has been closed and re-opened
                     replace_breakpoints = show_message_box(
                         'New Session',
                         'The Voltron instance currently syncing reports no breakpoints set, but breakpoints have been set in Binary Ninja. Restore these breakpoints?',
@@ -122,6 +124,7 @@ def sync(view):
                     # update the highlight colour to show the current PC
                     func.set_auto_instr_highlight(addr, pc_colour)
 
+                    # Run sync callbacks and remove them from the list if specified
                     for cb, _ in sync_callbacks:
                         cb(results)
                     sync_callbacks = filter(lambda cbt: not cbt[1], sync_callbacks)
