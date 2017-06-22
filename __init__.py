@@ -112,6 +112,7 @@ def sync(view):
             vers = client.perform_request("version")
             client.start(build_requests=build_requests, callback=callback)
             syncing = True
+            # Return the sync state so that external code can determine whether voltron is currently syncing with binjatron
             return syncing
         except:
             log_info("Couldn't connect to Voltron")
@@ -248,6 +249,11 @@ def clear_slide(view):
     slide = 0
 
 def custom_request(request, args, alert=True):
+    """ Allows external code to pass arbitrary commands to the voltron client
+    request: type of request - usually 'command'
+    args: dict containing keyword arguments for the request
+    alert: boolean indicating whether errors should result in a popup or simply
+        log to the console. Defaults to True."""
     global vers
     client_result = None
     try:
@@ -272,9 +278,15 @@ def custom_request(request, args, alert=True):
         else:
             log_info(request + " failed: " + str(args))
 
+    # Even if we encountered an exception, we return the results so external code can
+    # handle the error if necessary.
     return client_result
 
 def register_sync_callback(cb, should_delete=False):
+    """ Allows external code to register a callback to be run upon a succesful sync
+    cb: function pointer to the callback. Gets `results` as an argument
+    should_delete: boolean indicating whether the callback should be removed from
+        the list after a single call. Defaults to False. """
     global sync_callbacks
     sync_callbacks.append((cb, should_delete))
 
