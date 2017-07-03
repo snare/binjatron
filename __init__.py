@@ -90,21 +90,22 @@ def sync(view):
                     last_bp_addrs = addrs
 
                 elif last_bp_addrs:
-                    # We end up here if the debugger has been closed and re-opened
-                    replace_breakpoints = show_message_box(
-                        'New Session',
-                        'The Voltron instance currently syncing reports no breakpoints set, but breakpoints have been set in Binary Ninja. Restore these breakpoints?',
-                        buttons=enums.MessageBoxButtonSet.YesNoButtonSet)
+                    if (results[1].status == 'success') or (hasattr(results[1], 'message') and 'busy' not in results[1].message.lower()):
+                        # We end up here if the debugger has been closed and re-opened
+                        replace_breakpoints = show_message_box(
+                            'New Session',
+                            'The Voltron instance currently syncing reports no breakpoints set, but breakpoints have been set in Binary Ninja. Restore these breakpoints?',
+                            buttons=enums.MessageBoxButtonSet.YesNoButtonSet)
 
-                    if replace_breakpoints:
-                        for addr in set(last_bp_addrs):
-                            set_breakpoint(view, addr)
-                    else:
-                        for addr in set(last_bp_addrs):
-                            func = _get_function(view, addr)
-                            if func:
-                                func.set_auto_instr_highlight(addr, no_colour)
-                        last_bp_addrs = []
+                        if replace_breakpoints:
+                            for addr in set(last_bp_addrs):
+                                set_breakpoint(view, addr)
+                        else:
+                            for addr in set(last_bp_addrs):
+                                func = _get_function(view, addr)
+                                if func:
+                                    func.set_auto_instr_highlight(addr, no_colour)
+                            last_bp_addrs = []
 
                 if results[0].registers:
                     # get the current PC from the debugger
@@ -133,9 +134,6 @@ def sync(view):
                     if last_pc_addr:
                         # update the highlight colour of the previous PC to its saved value
                         _get_function(view, last_pc_addr).set_auto_instr_highlight(last_pc_addr, last_pc_addr_colour)
-
-
-
 
     if not syncing:
         try:
