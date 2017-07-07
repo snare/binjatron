@@ -214,7 +214,7 @@ def set_breakpoint(view, address):
 
 
 def delete_breakpoint(view, address):
-    global vers
+    global vers, last_bp_addrs
 
     try:
         if not vers:
@@ -250,6 +250,7 @@ def delete_breakpoint(view, address):
         func = _get_function(view, address)
         if func:
             func.set_auto_instr_highlight(address, no_colour)
+        last_bp_addrs = filter(lambda k : k != address, last_bp_addrs)
     except:
         log_alert("Failed to delete breakpoint")
 
