@@ -18,6 +18,7 @@ from threading import Thread
 from voltron.core import Client
 from voltron.plugin import api_request
 from scruffy import ConfigFile, PackageFile
+import sys
 
 log = voltron.setup_logging()
 client = Client()
@@ -28,6 +29,8 @@ syncing = False
 vers = None
 slide = 0
 notification = None
+sync_callbacks = []
+mute_errors_after = 3
 
 config = ConfigFile('~/.binjatron.conf', defaults=PackageFile('defaults.yaml'), apply_env=True, env_prefix='BTRON')
 config.load()
@@ -52,11 +55,21 @@ def sync(view):
         ]
 
     def callback(results=[], error=None):
-        global last_bp_addrs, last_pc_addr, last_pc_addr_colour
+        global last_bp_addrs, last_pc_addr, last_pc_addr_colour, sync_callbacks, mute_errors_after, syncing
 
         if error:
-            log_error("Error synchronising: {}".format(error))
+            if mute_errors_after > 0:
+                log_error("Error synchronising: {}".format(error))
+            elif mute_errors_after == 0:
+                # Prevent errors from filling up the entire log if the debugger closes and we lose sync
+                log_alert("Voltron encountered three sync errors in a row. Muting errors until the next succesful sync.")
+                syncing = False
+            mute_errors_after -= 1
         else:
+            if(mute_errors_after < 0):
+                log_info("Sync restored after {} attempts".format(mute_errors_after * -1))
+                syncing = True
+            mute_errors_after = 3
             if client and len(results):
                 if results[1].breakpoints:
                     addrs = [l['address'] - slide for s in [bp['locations'] for bp in results[1].breakpoints] for l in s]
@@ -76,6 +89,24 @@ def sync(view):
                     # save this set of breakpoint addresses for next time
                     last_bp_addrs = addrs
 
+                elif last_bp_addrs:
+                    if (results[1].status == 'success') or (hasattr(results[1], 'message') and 'busy' not in results[1].message.lower()):
+                        # We end up here if the debugger has been closed and re-opened
+                        replace_breakpoints = show_message_box(
+                            'New Session',
+                            'The Voltron instance currently syncing reports no breakpoints set, but breakpoints have been set in Binary Ninja. Restore these breakpoints?',
+                            buttons=enums.MessageBoxButtonSet.YesNoButtonSet)
+
+                        if replace_breakpoints:
+                            for addr in set(last_bp_addrs):
+                                set_breakpoint(view, addr)
+                        else:
+                            for addr in set(last_bp_addrs):
+                                func = _get_function(view, addr)
+                                if func:
+                                    func.set_auto_instr_highlight(addr, no_colour)
+                            last_bp_addrs = []
+
                 if results[0].registers:
                     # get the current PC from the debugger
                     addr = results[0].registers.values()[0] - slide
@@ -94,6 +125,16 @@ def sync(view):
                     # update the highlight colour to show the current PC
                     func.set_auto_instr_highlight(addr, pc_colour)
 
+                    # Run sync callbacks and remove them from the list if specified
+                    for cb, _ in sync_callbacks:
+                        cb(results)
+                    sync_callbacks = filter(lambda cbt: not cbt[1], sync_callbacks)
+
+                elif not results[1].breakpoints or (results[0].message == 'No such target'): # Clear the program counter highlight if the program isn't running
+                    if last_pc_addr:
+                        # update the highlight colour of the previous PC to its saved value
+                        _get_function(view, last_pc_addr).set_auto_instr_highlight(last_pc_addr, last_pc_addr_colour)
+
     if not syncing:
         try:
             log_info("Starting synchronisation with Voltron")
@@ -107,9 +148,9 @@ def sync(view):
             client.start(build_requests=build_requests, callback=callback)
             syncing = True
         except:
-            log_alert("Couldn't connect to Voltron")
+            log_info("Couldn't connect to Voltron")
     else:
-        log_alert("Already synchronising with Voltron")
+        log_info("Already synchronising with Voltron")
 
 
 def stop(view):
@@ -173,7 +214,7 @@ def set_breakpoint(view, address):
 
 
 def delete_breakpoint(view, address):
-    global vers
+    global vers, last_bp_addrs
 
     try:
         if not vers:
@@ -209,6 +250,7 @@ def delete_breakpoint(view, address):
         func = _get_function(view, address)
         if func:
             func.set_auto_instr_highlight(address, no_colour)
+        last_bp_addrs = filter(lambda k : k != address, last_bp_addrs)
     except:
         log_alert("Failed to delete breakpoint")
 
@@ -238,6 +280,51 @@ def clear_slide(view):
     global slide
     slide = 0
 
+def custom_request(request, args, alert=True):
+    """ Allows external code to pass arbitrary commands to the voltron client
+    request: type of request - usually 'command'
+    args: dict containing keyword arguments for the request
+    alert: boolean indicating whether errors should result in a popup or simply
+        log to the console. Defaults to True."""
+    global vers
+    client_result = None
+    try:
+        if not vers:
+            vers = client.perform_request("version")
+
+        if 'lldb' in vers.host_version or 'gdb' in vers.host_version:
+            cmd = request
+        else:
+            raise Exception("Debugger host version {} not supported".format(vers.host_version))
+
+        client_result = client.perform_request(request, **args)
+        if client_result.is_error:
+            raise Exception("\"" + cmd + "\": {}".format(client_result))
+
+        # update the voltron views
+        client.perform_request("command", command="voltron update", block=False)
+    except:
+        log_info(sys.exc_info()[1])
+        if alert:
+            log_alert(request + " failed: " + str(args))
+        else:
+            log_info(request + " failed: " + str(args))
+
+    # Even if we encountered an exception, we return the results so external code can
+    # handle the error if necessary.
+    return client_result
+
+def register_sync_callback(cb, should_delete=False):
+    """ Allows external code to register a callback to be run upon a succesful sync
+    cb: function pointer to the callback. Gets `results` as an argument
+    should_delete: boolean indicating whether the callback should be removed from
+        the list after a single call. Defaults to False. """
+    global sync_callbacks
+    sync_callbacks.append((cb, should_delete))
+
+def sync_state():
+    """ Return the sync state so that external code can determine whether voltron is currently syncing with binjatron """
+    return syncing
 
 class BinjatronNotification(BinaryDataNotification):
     def __init__(self, view):
